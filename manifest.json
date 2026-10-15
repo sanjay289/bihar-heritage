@@ -1,0 +1,14 @@
+{
+  "name": "Bihar Heritage | बिहार धरोहर",
+  "short_name": "Bihar Heritage",
+  "description": "Learn about Bihar's history, great people and culture.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff8ee",
+  "theme_color": "#c0392b",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
