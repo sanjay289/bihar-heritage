@@ -26,6 +26,18 @@
   main { padding: 14px; max-width: 700px; margin: auto; }
   #search { width: 100%; padding: 10px 14px; border-radius: 20px; border: 2px solid #e67e22; font-size: 1rem; margin-bottom: 12px; }
   .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+  .card .photo { width: calc(100% + 28px); margin: -14px -14px 10px; height: 180px; object-fit: cover; border-radius: 12px 12px 0 0; display: block; background: #f3d9c0; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 6px; }
+  .chip { flex: none; border: 2px solid #e67e22; background: #fff; color: #d35400; border-radius: 16px; padding: 5px 12px; font-weight: bold; font-size: .85rem; }
+  .chip.on { background: #e67e22; color: #fff; }
+  h2.div { color: #d35400; font-size: 1rem; margin: 14px 0 8px; }
+  .card.dist { padding: 10px 14px; }
+  .card.dist h3 { font-size: 1rem; margin-bottom: 2px; }
+  .credit { display: flex; gap: 10px; align-items: center; font-size: .8rem; }
+  .credit img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; }
+  .credit p { font-size: .8rem; word-break: break-word; }
+  footer a { color: #c0392b; }
+  nav button { font-size: .78rem; }
   .card h3 { color: #c0392b; margin-bottom: 6px; }
   .card .icon { font-size: 2rem; float: right; margin-left: 8px; }
   .card p { line-height: 1.55; font-size: .95rem; }
@@ -49,9 +61,7 @@
     <h1 id="title"></h1>
     <p id="sub"></p>
     <div class="langs">
-      <button data-lang="hi" onclick="setLang('hi')">हिंदी</button>
-      <button data-lang="en" onclick="setLang('en')">English</button>
-      <button data-lang="bh" onclick="setLang('bh')">भोजपुरी</button>
+      <span id="langBtns" style="display:contents"></span>
       <button id="installBtn" onclick="installApp()"></button>
     </div>
   </header>
@@ -59,13 +69,16 @@
     <button data-tab="places" onclick="show('places')"></button>
     <button data-tab="people" onclick="show('people')"></button>
     <button data-tab="culture" onclick="show('culture')"></button>
+    <button data-tab="districts" onclick="show('districts')"></button>
     <button data-tab="quiz" onclick="show('quiz')"></button>
   </nav>
 </div>
 <main id="content"></main>
-<footer>Bihar Heritage · बिहार धरोहर</footer>
+<footer>Bihar Heritage · बिहार धरोहर<br><a href="#" id="creditLink" onclick="showCredits(); return false"></a></footer>
 
 <script src="data.js"></script>
+<script src="data2.js"></script>
+<script src="credits.js"></script>
 <script>
 let lang = localStorage.getItem('lang') || 'hi';
 let tab = 'places';
@@ -73,7 +86,12 @@ let query = '';
 let level = null, qi = 0, score = 0, list = [];
 let installPrompt = null;
 
-const t = k => UI[k][lang];
+const t = k => UI[k][lang] || UI[k].hi;
+const L = obj => obj[lang] || obj.hi;   // text in current language, Hindi fallback
+const LATIN = () => lang === 'en';
+if (!LANGS.some(x => x[0] === lang)) lang = 'hi';
+let division = 'all';
+langBtns.innerHTML = LANGS.map(([c, n]) => `<button data-lang="${c}" onclick="setLang('${c}')">${n}</button>`).join('');
 const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(p => p[1]);
 
 function setLang(l) {
@@ -100,16 +118,24 @@ function render() {
     b.textContent = t(b.dataset.tab);
     b.classList.toggle('active', b.dataset.tab === tab);
   });
+  creditLink.textContent = t('credits');
   if (tab === 'quiz') return renderQuiz();
+  if (tab === 'districts') return renderDistricts();
+  if (tab === 'credits') return;
   content.innerHTML = `<input id="search" type="search" placeholder="${t('search')}" value="${query}" oninput="query=this.value; renderCards()"><div id="cards"></div>`;
   renderCards();
 }
 
 function renderCards() {
   const q = query.trim().toLowerCase();
-  const items = DATA[tab].filter(d => !q || [d.en, d.hi, d.bh].flat().join(' ').toLowerCase().includes(q));
+  const items = DATA[tab].filter(d => !q || LANGS.map(([c]) => d[c] || []).flat().join(' ').toLowerCase().includes(q));
   cards.innerHTML = items.length
-    ? items.map(d => `<div class="card"><span class="icon">${d.i}</span><h3>${d[lang][0]}</h3><p>${d[lang][1]}</p></div>`).join('')
+    ? items.map(d => {
+        const [h, p] = L(d);
+        const img = d.k && CREDITS[d.k]
+          ? `<img class="photo" src="img/${d.k}.jpg" alt="${h}" loading="lazy" onerror="this.remove()">` : '';
+        return `<div class="card">${img}<span class="icon">${d.i}</span><h3>${h}</h3><p>${p}</p></div>`;
+      }).join('')
     : `<p class="center">${t('none')}</p>`;
 }
 
@@ -150,7 +176,7 @@ function renderQuiz() {
   content.innerHTML = `<div class="card">
     <p>${t('qOf')} ${qi + 1} / ${list.length} · ⭐ ${score}</p>
     <div class="bar"><div style="width:${qi / list.length * 100}%"></div></div>
-    <p class="q">${q.q[lang]}</p>
+    <p class="q">${L(q.q)}</p>
     ${opts.map((o, i) => `<button class="opt" onclick="answer(${i})">${o}</button>`).join('')}
     <div id="nextBox"></div></div>`;
 }
@@ -176,6 +202,37 @@ function installApp() {
   installPrompt.prompt();
   installPrompt.userChoice.finally(() => { installPrompt = null; installBtn.style.display = 'none'; });
 }
+// ---------- Districts ----------
+function renderDistricts() {
+  const nm = x => LATIN() ? x.en : x.hi;
+  const chips = [['all', t('all')], ...DIVISIONS.map((v, i) => [String(i), nm(v)])]
+    .map(([v, n]) => `<button class="chip ${division === v ? 'on' : ''}" onclick="division='${v}'; renderDistricts()">${n}</button>`).join('');
+  const q = query.trim().toLowerCase();
+  let html = '';
+  DIVISIONS.forEach((v, i) => {
+    if (division !== 'all' && division !== String(i)) return;
+    const ds = v.d.filter(d => !q || d.join(' ').toLowerCase().includes(q));
+    if (!ds.length) return;
+    html += `<h2 class="div">${nm(v)} ${t('division')} (${ds.length})</h2>` + ds.map(d =>
+      `<div class="card dist"><h3>📍 ${LATIN() ? d[0] : d[1]}</h3><p>${LATIN() ? d[2] : d[3]}</p></div>`).join('');
+  });
+  content.innerHTML = `<input id="search" type="search" placeholder="${t('search')}" value="${query}"
+      oninput="query=this.value; renderDistricts(); const s=document.getElementById('search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length)">
+    <div class="chips">${chips}</div>${html || `<p class="center">${t('none')}</p>`}`;
+}
+
+// ---------- Photo credits ----------
+function showCredits() {
+  tab = 'credits';
+  render();
+  content.innerHTML = `<button class="btn" onclick="show('places')">${t('back')}</button>
+    <div class="card" style="margin-top:12px"><h3>${t('credits')}</h3><p>${t('creditNote')}</p></div>` +
+    Object.entries(CREDITS).map(([k, c]) => `<div class="card credit"><img src="img/${k}.jpg" alt="" loading="lazy">
+      <p><b>${c.file.replace(/_/g, ' ')}</b><br>${c.author} · ${c.license}<br>
+      <a href="${c.url}" target="_blank" rel="noopener">Wikimedia Commons</a></p></div>`).join('');
+  scrollTo(0, 0);
+}
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 render();
